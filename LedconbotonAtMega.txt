@@ -1,0 +1,56 @@
+#define LED_BIT 5
+#define BTN_BIT 2
+
+void delay_ms(unsigned int ms) {
+    while (ms--) {
+        for (volatile unsigned long i = 0; i < 1000UL; i++) {
+            __asm__ __volatile__("nop");
+        }
+    }
+}
+
+unsigned char get_input_debounced(void) {
+    unsigned char a = (PIND & (1 << BTN_BIT)) ? 1 : 0;
+    delay_ms(20);
+    unsigned char b = (PIND & (1 << BTN_BIT)) ? 1 : 0;
+
+    if (a == b) return b;
+    else return 0xFF;
+}
+
+void setup() {
+    DDRB |= (1 << LED_BIT);
+    PORTB &= ~(1 << LED_BIT);
+
+    DDRD &= ~(1 << BTN_BIT);
+    PORTD &= ~(1 << BTN_BIT);
+
+    Serial.begin(9600);
+    Serial.println("Sistema iniciado");
+}
+
+void loop() {
+    static unsigned char lastStable = 0;
+    static unsigned char lastProcessed = 0;
+
+    unsigned char stable = get_input_debounced();
+
+    if (stable != 0xFF) {
+        if (stable == 1 && lastProcessed == 0) {
+
+            PORTB ^= (1 << LED_BIT);
+
+            if (PINB & (1 << LED_BIT))
+                Serial.println("LED encendido");
+            else
+                Serial.println("LED apagado");
+
+            lastProcessed = 1;
+        }
+        else if (stable == 0) {
+            lastProcessed = 0;
+        }
+
+        lastStable = stable;
+    }
+}
